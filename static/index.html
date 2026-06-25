@@ -1,0 +1,864 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多模态客服智能体</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-secondary: #64748b;
+    --border: #e2e8f0;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+    --radius-sm: 8px;
+    --transition: 0.2s ease;
+    --font: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Navbar ── */
+  .navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    height: 60px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 0.01em;
+  }
+  .navbar-brand svg { flex-shrink: 0; }
+  .navbar-links { display: flex; gap: 16px; }
+  .navbar-links a {
+    text-decoration: none;
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition), color var(--transition);
+  }
+  .navbar-links a:hover {
+    background: #eef2ff;
+    color: var(--primary);
+  }
+
+  /* ── Main Layout ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    padding: 20px 24px 20px 24px;
+    gap: 20px;
+  }
+
+  /* ── Chat Panel ── */
+  .chat-panel {
+    flex: 7;
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    min-width: 0;
+  }
+  .chat-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+    transition: background var(--transition);
+  }
+  .status-dot.disconnected { background: #ef4444; }
+  .status-dot.loading { background: #f59e0b; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .chat-header h2 { font-size: 15px; font-weight: 600; color: var(--text); }
+  .chat-header .session-badge {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: "SF Mono", "Fira Code", monospace;
+  }
+
+  /* ── Messages ── */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 20px 8px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 6px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+  .message {
+    display: flex;
+    gap: 10px;
+    max-width: 82%;
+    animation: msgIn 0.28s ease-out;
+  }
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .message.user { align-self: flex-end; flex-direction: row-reverse; }
+  .message.bot { align-self: flex-start; }
+
+  .msg-avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    background: #f1f5f9;
+  }
+
+  .msg-bubble {
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.65;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .user .msg-bubble {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .bot .msg-bubble {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg-bubble .image-grid {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+  }
+  .msg-bubble .image-grid img {
+    width: 80px; height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: transform var(--transition), box-shadow var(--transition);
+  }
+  .msg-bubble .image-grid img:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* ── Typing Indicator ── */
+  .typing-indicator {
+    display: none;
+    align-self: flex-start;
+    gap: 10px;
+    padding-left: 4px;
+  }
+  .typing-indicator.active { display: flex; }
+  .typing-indicator .msg-avatar { background: #f1f5f9; }
+  .typing-dots {
+    display: flex; align-items: center; gap: 4px;
+    padding: 14px 18px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    box-shadow: var(--shadow);
+  }
+  .typing-dots span {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #94a3b8;
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%,60%,100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* ── Input Area ── */
+  .input-area {
+    border-top: 1px solid var(--border);
+    padding: 12px 20px 16px 20px;
+    flex-shrink: 0;
+    background: var(--card);
+  }
+  .input-row {
+    display: flex; align-items: flex-end; gap: 10px;
+  }
+  .input-row textarea {
+    flex: 1;
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    outline: none;
+    resize: none;
+    max-height: 120px;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    background: #f8fafc;
+    color: var(--text);
+  }
+  .input-row textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+    background: var(--card);
+  }
+  .input-row textarea::placeholder { color: #94a3b8; }
+
+  .icon-btn {
+    width: 40px; height: 40px;
+    border: none; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background var(--transition), transform var(--transition);
+    background: #f1f5f9;
+    color: var(--text-secondary);
+    font-size: 18px;
+  }
+  .icon-btn:hover { background: #e2e8f0; transform: scale(1.05); }
+  .icon-btn.send-btn {
+    background: var(--primary);
+    color: #fff;
+    font-size: 16px;
+  }
+  .icon-btn.send-btn:hover { background: var(--primary-hover); }
+  .icon-btn.send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── Image Upload Preview ── */
+  .upload-preview {
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 0 6px 0;
+    align-items: center;
+  }
+  .upload-preview.active { display: flex; }
+  .upload-preview .thumb {
+    position: relative;
+    width: 60px; height: 60px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .upload-preview .thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  .upload-preview .thumb .remove-btn {
+    position: absolute;
+    top: 2px; right: 2px;
+    width: 18px; height: 18px;
+    border: none; border-radius: 50%;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    transition: background var(--transition);
+  }
+  .upload-preview .thumb .remove-btn:hover { background: rgba(239,68,68,0.85); }
+  .upload-counter {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 4px;
+  }
+
+  /* ── Info Panel ── */
+  .info-panel {
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 220px;
+  }
+  .info-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+  }
+  .info-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .info-card p, .info-card .info-row {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 4px;
+  }
+  .info-card .info-row { display: flex; justify-content: space-between; }
+  .info-card .info-label { color: var(--text-secondary); }
+  .info-card .info-value { color: var(--text); font-weight: 500; }
+
+  .session-info .info-card { background: linear-gradient(135deg, #eef2ff, #f8fafc); }
+
+  .quick-questions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .quick-questions button {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    font-family: var(--font);
+    transition: all var(--transition);
+  }
+  .quick-questions button:hover {
+    border-color: var(--primary);
+    background: #eef2ff;
+    color: var(--primary);
+    transform: translateX(3px);
+  }
+
+  .api-links { display: flex; flex-direction: column; gap: 6px; }
+  .api-links a {
+    text-decoration: none;
+    font-size: 13px;
+    color: var(--primary);
+    padding: 6px 0;
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--transition), padding-left var(--transition);
+  }
+  .api-links a:hover {
+    border-bottom-color: var(--primary);
+    padding-left: 4px;
+  }
+
+  /* ── Image Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-overlay img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: var(--radius);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    object-fit: contain;
+  }
+  .modal-overlay .modal-close {
+    position: absolute;
+    top: 20px; right: 30px;
+    color: #fff;
+    font-size: 32px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    opacity: 0.8;
+    transition: opacity var(--transition);
+    line-height: 1;
+  }
+  .modal-overlay .modal-close:hover { opacity: 1; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .main { flex-direction: column; padding: 12px; }
+    .info-panel { flex: none; flex-direction: row; flex-wrap: wrap; }
+    .info-panel .info-card { flex: 1; min-width: 180px; }
+    .message { max-width: 92%; }
+  }
+  @media (max-width: 600px) {
+    .navbar { padding: 0 16px; }
+    .navbar-brand span { font-size: 15px; }
+    .navbar-links a { font-size: 12px; padding: 4px 10px; }
+    .main { padding: 8px; gap: 10px; }
+    .chat-header { padding: 12px 14px; }
+    .messages { padding: 12px 14px 4px 14px; }
+    .input-area { padding: 10px 14px 12px 14px; }
+    .info-panel { flex-direction: column; }
+    .message { max-width: 96%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10c0 2.5-1 4.7-2.5 6.5l1.5 3.5-3.5-1.5A9.9 9.9 0 0 1 12 22a10 10 0 0 1 0-20z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>
+    <span>多模态客服智能体</span>
+  </div>
+  <div class="navbar-links">
+    <a href="/docs">📖 接口文档</a>
+    <a href="/health">❤️ 健康检查</a>
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Chat Panel -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="status-dot" id="statusDot"></div>
+      <h2>客服对话</h2>
+      <span class="session-badge" id="sessionBadge">会话: —</span>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="message bot">
+        <div class="msg-avatar">🤖</div>
+        <div class="msg-bubble">您好！我是多模态客服智能体，很高兴为您服务。您可以上传图片或直接输入问题，我会尽力帮您解答。</div>
+      </div>
+    </div>
+
+    <!-- Typing Indicator -->
+    <div class="typing-indicator" id="typingIndicator">
+      <div class="msg-avatar">🤖</div>
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <div class="upload-preview" id="uploadPreview">
+        <div id="thumbList"></div>
+        <span class="upload-counter" id="uploadCounter">已选 0/3 张图片</span>
+      </div>
+      <div class="input-row">
+        <button class="icon-btn" id="uploadBtn" title="上传图片">📎</button>
+        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+        <textarea id="msgInput" rows="1" placeholder="请输入您的问题..." maxlength="2000"></textarea>
+        <button class="icon-btn send-btn" id="sendBtn" title="发送 (Enter)">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Panel -->
+  <div class="info-panel">
+    <div class="session-info">
+      <div class="info-card">
+        <h3>📋 会话信息</h3>
+        <div class="info-row"><span class="info-label">会话 ID</span><span class="info-value" id="infoSessionId">—</span></div>
+        <div class="info-row"><span class="info-label">状态</span><span class="info-value" id="infoStatus">连接中...</span></div>
+        <div class="info-row"><span class="info-label">消息数</span><span class="info-value" id="infoMsgCount">0</span></div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>⚡ 快捷提问</h3>
+      <div class="quick-questions">
+        <button data-q="健身追踪器怎么充电？">🏃 健身追踪器怎么充电？</button>
+        <button data-q="如何更换手表表带？">⌚ 如何更换手表表带？</button>
+        <button data-q="电钻指示灯含义">🔧 电钻指示灯含义</button>
+        <button data-q="空调不制冷">❄️ 空调不制冷</button>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>🔗 API 接口</h3>
+      <div class="api-links">
+        <a href="/docs">📄 接口文档</a>
+        <a href="/health">❤️ 健康检查</a>
+        <a href="/api/image/example">🖼️ 图片资源</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal-overlay" id="imageModal">
+  <button class="modal-close" id="modalClose">&times;</button>
+  <img id="modalImage" src="" alt="图片预览">
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── State ──
+  const state = {
+    sessionId: null,
+    images: [],       // File[]
+    sending: false,
+    msgCount: 0,
+  };
+
+  // ── DOM refs ──
+  const $ = id => document.getElementById(id);
+  const statusDot    = $('statusDot');
+  const sessionBadge = $('sessionBadge');
+  const messagesEl   = $('messages');
+  const typingInd    = $('typingIndicator');
+  const msgInput     = $('msgInput');
+  const sendBtn      = $('sendBtn');
+  const uploadBtn    = $('uploadBtn');
+  const fileInput    = $('fileInput');
+  const uploadPreview= $('uploadPreview');
+  const thumbList    = $('thumbList');
+  const uploadCounter= $('uploadCounter');
+  const imageModal   = $('imageModal');
+  const modalImage   = $('modalImage');
+  const modalClose   = $('modalClose');
+  const infoSessionId= $('infoSessionId');
+  const infoStatus   = $('infoStatus');
+  const infoMsgCount = $('infoMsgCount');
+
+  const API_BASE = '';
+  const AUTH_HEADER = 'Bearer sk_customer_20260304';
+
+  // ── Helpers ──
+  function apiHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': AUTH_HEADER,
+    };
+  }
+
+  function truncateSession(id) {
+    if (!id || id.length <= 8) return id || '—';
+    return id.slice(0, 8) + '...';
+  }
+
+  function scrollToBottom() {
+    setTimeout(() => { messagesEl.scrollTop = messagesEl.scrollHeight; }, 30);
+  }
+
+  function updateSessionUI(id) {
+    state.sessionId = id;
+    const display = truncateSession(id);
+    sessionBadge.textContent = '会话: ' + display;
+    infoSessionId.textContent = display;
+  }
+
+  function updateMsgCountUI() {
+    infoMsgCount.textContent = state.msgCount;
+  }
+
+  function setStatus(connected) {
+    statusDot.className = 'status-dot' + (connected ? '' : ' disconnected');
+    infoStatus.textContent = connected ? '已连接' : '未连接';
+  }
+
+  // ── Message Rendering ──
+  function addMessage(role, text, images) {
+    state.msgCount++;
+    updateMsgCountUI();
+
+    const div = document.createElement('div');
+    div.className = 'message ' + role;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'msg-avatar';
+    avatar.textContent = role === 'user' ? '👤' : '🤖';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.textContent = text;
+
+    // Process <PIC> tags for bot messages
+    if (role === 'bot' && text && text.includes('<PIC')) {
+      const picRegex = /<PIC:\s*([^>]+)>/g;
+      let replaced = text.replace(picRegex, '').trim();
+      bubble.textContent = replaced;
+
+      const grid = document.createElement('div');
+      grid.className = 'image-grid';
+      let match;
+      picRegex.lastIndex = 0;
+      while ((match = picRegex.exec(text)) !== null) {
+        const imgId = match[1].trim();
+        const img = document.createElement('img');
+        img.src = API_BASE + '/api/image/' + encodeURIComponent(imgId);
+        img.alt = '图片';
+        img.loading = 'lazy';
+        img.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openModal(this.src);
+        });
+        grid.appendChild(img);
+      }
+      if (grid.children.length > 0) {
+        // also re-check for any remaining text content
+        if (replaced) {
+          bubble.textContent = replaced;
+        }
+        bubble.appendChild(grid);
+      }
+    } else if (role === 'user' && images && images.length > 0) {
+      // For user messages, show small thumbnails inside the bubble
+      // but we already have them in the upload preview, so just show names
+      // Actually skip inline images for user to keep bubbles clean
+    }
+
+    div.appendChild(avatar);
+    div.appendChild(bubble);
+    // Insert before typing indicator
+    messagesEl.insertBefore(div, typingInd);
+    scrollToBottom();
+  }
+
+  function renderUploadPreviews() {
+    thumbList.innerHTML = '';
+    state.images.forEach((file, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      img.alt = file.name;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = '×';
+      removeBtn.addEventListener('click', function() {
+        removeImage(idx);
+      });
+      thumb.appendChild(img);
+      thumb.appendChild(removeBtn);
+      thumbList.appendChild(thumb);
+    });
+    const count = state.images.length;
+    uploadCounter.textContent = `已选 ${count}/3 张图片`;
+    uploadPreview.classList.toggle('active', count > 0);
+  }
+
+  function removeImage(idx) {
+    state.images.splice(idx, 1);
+    renderUploadPreviews();
+  }
+
+  // ── Image Modal ──
+  function openModal(src) {
+    modalImage.src = src;
+    imageModal.classList.add('active');
+  }
+
+  function closeModal() {
+    imageModal.classList.remove('active');
+    modalImage.src = '';
+  }
+
+  imageModal.addEventListener('click', function(e) {
+    if (e.target === imageModal) closeModal();
+  });
+  modalClose.addEventListener('click', closeModal);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // ── Send Message ──
+  async function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text && state.images.length === 0) return;
+    if (state.sending) return;
+
+    state.sending = true;
+    sendBtn.disabled = true;
+    typingInd.classList.add('active');
+
+    // Add user message
+    addMessage('user', text);
+
+    // Prepare payload
+    const payload = {
+      question: text,
+      images: [],
+      session_id: state.sessionId,
+    };
+
+    // Convert images to base64
+    if (state.images.length > 0) {
+      const base64List = [];
+      for (const file of state.images) {
+        try {
+          const b64 = await fileToBase64(file);
+          base64List.push(b64);
+        } catch(e) {
+          console.warn('Failed to encode image:', file.name, e);
+        }
+      }
+      payload.images = base64List;
+    }
+
+    // Clear input
+    msgInput.value = '';
+    msgInput.style.height = 'auto';
+    state.images = [];
+    renderUploadPreviews();
+
+    try {
+      const res = await fetch(API_BASE + '/chat', {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error('HTTP ' + res.status + ': ' + res.statusText);
+      }
+
+      const data = await res.json();
+
+      // Update session
+      if (data.session_id) {
+        updateSessionUI(data.session_id);
+      }
+
+      // Add bot response
+      const reply = data.answer || data.response || data.reply || JSON.stringify(data);
+      addMessage('bot', reply);
+
+    } catch (err) {
+      addMessage('bot', '抱歉，请求出错了：' + err.message + '\n\n请检查网络连接或稍后重试。');
+    } finally {
+      state.sending = false;
+      sendBtn.disabled = false;
+      typingInd.classList.remove('active');
+    }
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function() {
+        // Remove data:...;base64, prefix
+        const result = reader.result;
+        const commaIdx = result.indexOf(',');
+        resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ── Event Bindings ──
+
+  // Send
+  sendBtn.addEventListener('click', sendMessage);
+
+  msgInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // Auto-resize textarea
+  msgInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  });
+
+  // Upload
+  uploadBtn.addEventListener('click', function() {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', function() {
+    const files = Array.from(this.files);
+    const remaining = 3 - state.images.length;
+    const toAdd = files.slice(0, remaining);
+    state.images = state.images.concat(toAdd);
+    renderUploadPreviews();
+    this.value = ''; // reset
+  });
+
+  // Quick questions
+  document.querySelectorAll('.quick-questions button').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      msgInput.value = this.getAttribute('data-q');
+      msgInput.style.height = 'auto';
+      msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+      msgInput.focus();
+    });
+  });
+
+  // ── Health Check ──
+  async function checkHealth() {
+    try {
+      const res = await fetch(API_BASE + '/health', {
+        headers: { 'Authorization': AUTH_HEADER },
+      });
+      const ok = res.ok;
+      setStatus(ok);
+      if (ok) {
+        const data = await res.json();
+        if (data.session_id && !state.sessionId) {
+          updateSessionUI(data.session_id);
+        }
+      }
+    } catch (e) {
+      setStatus(false);
+    }
+  }
+
+  // ── Init ──
+  updateSessionUI(null);
+  setStatus(false);
+  checkHealth();
+  setInterval(checkHealth, 30000);
+})();
+</script>
+</body>
+</html>

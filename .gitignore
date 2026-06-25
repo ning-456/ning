@@ -1,0 +1,31 @@
+﻿# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# ── 大文件：图片索引 (194MB，超 GitHub 100MB 限制) ──
+knowledge_base/image_index.json
+
+# ── 大文件：2604 张原始插图 (140MB) ──
+手册/插图/
+
+# ── 向量数据库（实际存储在 $TEMP\dl_kb_chroma） ──
+knowledge_base/chroma_db/
+
+# ── 生成的提交文件（可随时重跑生成） ──
+submission*.csv
+submission*_detail.json
+
+# ── 调试文件 ──
+_airfryer_debug.json
+
+# ── IDE ──
+.vscode/
+.idea/
+
+# ── 系统 ──
+.DS_Store
+Thumbs.db
