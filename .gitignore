@@ -16,11 +16,10 @@ knowledge_base/image_index.json
 knowledge_base/chroma_db/
 
 # ── 生成的提交文件（可随时重跑生成） ──
-submission*.csv
-submission*_detail.json
+results/
 
-# ── 调试文件 ──
-_airfryer_debug.json
+# ── 服务器运行日志 ──
+logs/
 
 # ── IDE ──
 .vscode/
@@ -29,3 +28,29 @@ _airfryer_debug.json
 # ── 系统 ──
 .DS_Store
 Thumbs.db
+# ── 临时文件 ──
+server_err.txt
+server_out.txt
+_fix*.py
+_airfryer_debug.json
+
+# ── 评估输出（可重跑） ──
+submission*.csv
+!submission_example.csv
+submission*_detail.json
+
+# ── 系统文件 ──
+desktop.ini
+# ── 数据文件（竞赛数据，不公开） ──
+data/
+
+# ── 本地文档 ──
+docs/*.docx
+# ── 作品集素材（非运行代码）──
+static/portfolio/
+
+# ── 内部文档 ──
+docs/decisions.md
+
+# ── 竞赛手册素材 ──
+手册/*.txt

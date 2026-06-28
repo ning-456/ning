@@ -19,7 +19,7 @@ from engine.pipeline import CustomerServicePipeline
 REDO_IDS = {241, 242, 244, 245, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 271, 272, 273, 274, 276, 279, 290, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 425, 426, 427, 428, 429, 430, 431, 432, 433, 434, 435, 436}
 
 root = Path(__file__).parent.parent.absolute()
-out = root / "submission3.csv"
+out = root / "results" / "submission3.csv"
 existing = {}
 if out.exists():
     with open(out, "r", encoding="utf-8-sig") as f:
@@ -29,7 +29,7 @@ if out.exists():
             if row: existing[int(row[0])] = row[1]
 
 qs = {}
-with open(root / "question_public.csv", "r", encoding="utf-8") as f:
+with open(root / "data" / "question_public.csv", "r", encoding="utf-8") as f:
     for line in f:
         m = re.match(r"(\d+),", line.strip())
         if m:

@@ -71,6 +71,43 @@
     color: var(--primary);
   }
 
+  /* -- Model Selector -- */
+  .model-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .model-selector select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 5px 28px 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    min-width: 130px;
+  }
+  .model-selector select:hover {
+    border-color: var(--primary);
+  }
+  .model-selector select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(79,70,229,0.15);
+  }
+  .model-selector .model-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
   /* ── Main Layout ── */
   .main {
     display: flex;
@@ -452,6 +489,12 @@
     <span>多模态客服智能体</span>
   </div>
   <div class="navbar-links">
+    <div class="model-selector">
+      <span class="model-label">🧠</span>
+      <select id="modelSelect">
+        <option value="">加载中...</option>
+      </select>
+    </div>
     <a href="/docs">📖 接口文档</a>
     <a href="/health">❤️ 健康检查</a>
   </div>
@@ -473,12 +516,11 @@
         <div class="msg-avatar">🤖</div>
         <div class="msg-bubble">您好！我是多模态客服智能体，很高兴为您服务。您可以上传图片或直接输入问题，我会尽力帮您解答。</div>
       </div>
-    </div>
-
-    <!-- Typing Indicator -->
-    <div class="typing-indicator" id="typingIndicator">
-      <div class="msg-avatar">🤖</div>
-      <div class="typing-dots"><span></span><span></span><span></span></div>
+      <!-- Typing Indicator (inside messages) -->
+      <div class="typing-indicator" id="typingIndicator">
+        <div class="msg-avatar">🤖</div>
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>
     </div>
 
     <!-- Input Area -->
@@ -858,7 +900,57 @@
   setStatus(false);
   checkHealth();
   setInterval(checkHealth, 30000);
+  // -- Model Selector --
+  const modelSelect = document.getElementById('modelSelect');
+
+  async function loadModels() {
+    try {
+      const res = await fetch(API_BASE + '/api/models', {
+        headers: { 'Authorization': AUTH_HEADER },
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      modelSelect.innerHTML = '';
+      for (const m of data.models) {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        if (m === data.current_llm) opt.selected = true;
+        modelSelect.appendChild(opt);
+      }
+    } catch (e) {
+      modelSelect.innerHTML = '<option value="">\u6a21\u578b\u4e0d\u53ef\u7528</option>';
+    }
+  }
+
+  modelSelect.addEventListener('change', async function() {
+    const model = this.value;
+    if (!model) return;
+    const prevValue = modelSelect.dataset.prev || modelSelect.value;
+    try {
+      const res = await fetch(API_BASE + '/api/models/switch', {
+        method: 'POST',
+        headers: Object.assign(apiHeaders(), { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ model }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      modelSelect.dataset.prev = data.current_llm;
+      const badge = document.querySelector('.session-badge');
+      if (badge) {
+        const orig = badge.textContent;
+        badge.textContent = '\u2705 \u5df2\u5207\u6362\u5230 ' + data.current_llm;
+        setTimeout(() => { badge.textContent = orig; }, 2500);
+      }
+    } catch (e) {
+      modelSelect.value = prevValue || modelSelect.dataset.prev || '';
+    }
+  });
+
+  loadModels();
+
 })();
 </script>
 </body>
 </html>
+

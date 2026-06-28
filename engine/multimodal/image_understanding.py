@@ -7,10 +7,10 @@ class VLMImageUnderstanding:
 
     def __init__(self):
         self.mode = "api"  # always API
-        self.model_name = config.VLM_MODEL
+        self.model_name = config.CURRENT_VLM_MODEL
         self.api_key = config.VLM_API_KEY
         self.api_base = config.VLM_API_BASE
-        self.api_model = config.VLM_MODEL
+        self.api_model = config.CURRENT_VLM_MODEL
         self.max_tokens = config.VLM_MAX_TOKENS
         self.client = None
         self.processor = None

@@ -6,8 +6,16 @@ from fastapi import FastAPI, Depends
 from fastapi.responses import HTMLResponse, Response
 from config import API_HOST, API_PORT, IMAGE_INDEX_PATH
 from api.schemas import ChatRequest, ChatResponse, ChatResponseData
+from pydantic import BaseModel
 from api.auth import verify_token
+import requests
+import config
 from engine.pipeline import CustomerServicePipeline
+
+
+class SwitchModel(BaseModel):
+    model: str
+
 
 _pipeline = None
 def get_pipeline():
@@ -47,6 +55,26 @@ async def index():
     if idx.exists():
         return HTMLResponse(content=idx.read_text(encoding="utf-8"))
     return HTMLResponse("<h1>Frontend not ready</h1>")
+
+@app.get("/api/models", tags=["系统"])
+async def list_models():
+    """获取 Ollama 可用模型列表及当前选中"""
+    try:
+        r = requests.get(config.LLM_API_BASE.replace("/v1", "") + "/api/tags", timeout=5)
+        models = [m["name"] for m in r.json().get("models", [])]
+    except Exception as e:
+        models = []
+    return {"models": models, "current_llm": config.CURRENT_LLM_MODEL, "current_vlm": config.CURRENT_VLM_MODEL}
+
+
+@app.post("/api/models/switch", tags=["系统"])
+async def switch_model(data: SwitchModel):
+    """切换 LLM + VLM 运行时模型"""
+    config.CURRENT_LLM_MODEL = data.model
+    config.CURRENT_VLM_MODEL = data.model
+    print(f"[API] 模型已切换: LLM={config.CURRENT_LLM_MODEL}, VLM={config.CURRENT_VLM_MODEL}")
+    return {"ok": True, "current_llm": config.CURRENT_LLM_MODEL, "current_vlm": config.CURRENT_VLM_MODEL}
+
 
 @app.get("/api/image/{image_id}", include_in_schema=False)
 async def get_image(image_id: str):
