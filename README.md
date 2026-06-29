@@ -191,66 +191,70 @@ POST /chat
 
 ## 项目文件结构
 
-\+-- main.py                   # 启动入口: uvicorn 启动 FastAPI
-+-- config.py                 # 统一配置 (所有可调参数)
-+-- requirements.txt          # 依赖清单
-+-- .gitignore                # Git 忽略规则
-+-- README.md                 # 项目说明
-+-- AGENTS.md                 # 开发约束规则
+## 项目文件结构
 
-+-- api/                      # API 服务
-|   +-- server.py             # FastAPI 端点 (/chat, /health, /api/image/{id})
-|   +-- schemas.py            # Pydantic 请求/响应模型
-|   +-- auth.py               # Bearer Token 验证
+```
+./
+├── main.py                   →  启动入口
+├── config.py                 →  统一配置
+├── requirements.txt          →  依赖清单
+├── .gitignore                →  忽略规则
+├── README.md                 →  项目说明
+├── AGENTS.md                 →  开发约束规则
 
-+-- engine/                   # 核心引擎
-|   +-- pipeline.py           # 12 步核心流程编排
-|   +-- cs_responder.py       # 客服模板匹配
-|   +-- image_matcher.py      # VLM 图片匹配
-|   |
-|   +-- rag/                  # RAG 检索
-|   |   +-- knowledge_base.py       # sentence-transformers 语义向量检索
-|   |   +-- hybrid_retriever.py     # 向量检索 + Cross-Encoder 重排序
-|   |   +-- text_image_mapper.py    # 文本 <-> 图片ID 映射
-|   |
-|   +-- generation/           # 答案生成
-|   |   +-- answer_assembler.py     # LLM + 规则润色双通道
-|   |   +-- llm_client.py     # Ollama API 客户端
-|   |   +-- post_processor.py       # 后处理 (去前缀/格式化/图片标签)
-|   |
-|   +-- multimodal/           # 多模态
-|   |   +-- image_understanding.py  # VLM 图像理解
-|   |   +-- intent_recognizer.py    # 意图识别
-|   |   +-- question_splitter.py    # 复合问题拆解
-|   |
-|   +-- dialogue/             # 对话管理
-|       +-- manager.py        # 会话管理 (TTL过期 + 历史记录)
+├── api/                      →  API服务
+│   ├── server.py             →  FastAPI端点
+│   ├── schemas.py            →  数据模型
+│   └── auth.py               →  Token鉴权
 
-+-- data_processing/          # 知识库构建工具
-|   +-- build_knowledge_base.py     # 构建入口
-|   +-- text_cleaner.py       # 文本清洗
-|   +-- text_chunker.py       # 文本分块
-|   +-- image_encoder.py      # Base64 编码 + 压缩
+├── engine/                   →  核心引擎
+│   ├── pipeline.py           →  12步流程编排
+│   ├── cs_responder.py       →  客服模板匹配
+│   ├── image_matcher.py      →  VLM图片匹配
+│   │
+│   ├── rag/                  →  RAG检索
+│   │   ├── knowledge_base.py     →  语义向量检索
+│   │   ├── hybrid_retriever.py   →  向量检索+重排序
+│   │   └── text_image_mapper.py  →  文本↔图片ID映射
+│   │
+│   ├── generation/           →  答案生成
+│   │   ├── answer_assembler.py   →  LLM+规则双通道
+│   │   ├── llm_client.py     →  Ollama API客户端
+│   │   └── post_processor.py     →  后处理
+│   │
+│   ├── multimodal/           →  多模态
+│   │   ├── image_understanding.py  →  VLM图像理解
+│   │   ├── intent_recognizer.py    →  意图识别
+│   │   └── question_splitter.py    →  复合问题拆解
+│   │
+│   └── dialogue/             →  对话管理
+│       └── manager.py        →  会话管理
 
-+-- knowledge_base/           # 知识库配置文件
-|   +-- cs_templates.json     # 客服模板
-|   +-- text_image_mapping.json     # 文本-图片映射
+├── data_processing/          →  知识库构建
+│   ├── build_knowledge_base.py   →  构建入口
+│   ├── text_cleaner.py       →  文本清洗
+│   ├── text_chunker.py       →  文本分块
+│   └── image_encoder.py      →  Base64编码
 
-+-- tests/                    # 测试
-|   +-- test_p0_regression.py       # P0 RAG 回归测试
-|   +-- test_api.py           # API 接口测试
+├── knowledge_base/           →  知识库配置
+│   ├── cs_templates.json     →  客服模板
+│   └── text_image_mapping.json   →  图文映射
 
-+-- scripts/                  # 评估脚本
-|   +-- batch_evaluate.py     # 批量评估
-|   +-- generate_submission.py      # 全量评估
-|   +-- patch_run.py          # 补跑脚本
+├── tests/                    →  测试
+│   ├── test_p0_regression.py     →  RAG回归测试
+│   └── test_api.py           →  API测试
 
-+-- training/                 # Embedding 微调
-|   +-- embedding_trainer.py
+├── scripts/                  →  评估脚本
+│   ├── batch_evaluate.py     →  批量评估
+│   ├── generate_submission.py     →  全量评估
+│   └── patch_run.py          →  补跑脚本
 
-+-- static/
-    +-- index.html            # 前端聊天页面
-\
+├── training/                 →  Embedding微调
+│   └── embedding_trainer.py
+
+└── static/                   →  前端
+    └── index.html            →  聊天页面
+```
 ## 批量评估
 
 `ash
